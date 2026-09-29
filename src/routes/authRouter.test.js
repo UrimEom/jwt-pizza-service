@@ -77,3 +77,56 @@ async function createAdminUser() {
   user = await DB.addUser(user);
   return { ...user, password: 'toomanysecrets' };
 }
+
+test('GET /api/user/me rejects a request without a token', async () => {
+   const response = await request(app).get('/api/user/me');
+ 
+   expect(response.status).toBe(401);
+ });
+ 
+ test('GET /api/user/me returns the logged-in user', async () => {
+   const response = await request(app)
+     .get('/api/user/me')
+     .set('Authorization', `Bearer ${testUserAuthToken}`);
+ 
+   expect(response.status).toBe(200);
+   expect(response.body.email).toBe(testUser.email);
+ });
+ 
+ test('GET /api/order/menu returns the menu', async () => {
+   const response = await request(app).get('/api/order/menu');
+ 
+   expect(response.status).toBe(200);
+   expect(Array.isArray(response.body)).toBe(true);
+ });
+ 
+ test('admin can add a menu item', async () => {
+   const item = {
+     title: `Test ${randomName()}`,
+     description: 'Coverage test item',
+     image: 'test.png',
+     price: 0.01,
+   };
+ 
+   const response = await request(app)
+     .put('/api/order/menu')
+     .set('Authorization', `Bearer ${adminAuthToken}`)
+     .send(item);
+ 
+   expect(response.status).toBe(200);
+   expect(response.body.some((menuItem) => menuItem.title === item.title)).toBe(true);
+ });
+ 
+ test('GET /api/order rejects a request without a token', async () => {
+   const response = await request(app).get('/api/order');
+ 
+   expect(response.status).toBe(401);
+ });
+ 
+ test('GET /api/franchise returns the franchise list', async () => {
+   const response = await request(app).get('/api/franchise');
+ 
+   expect(response.status).toBe(200);
+   expect(Array.isArray(response.body.franchises)).toBe(true);
+   expect(typeof response.body.more).toBe('boolean');
+ });
