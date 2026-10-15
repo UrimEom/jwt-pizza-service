@@ -185,17 +185,34 @@ test('a diner can update their own account', async () => {
   testUserAuthToken = response.body.token;
 });
 
-test('GET /api/user returns the placeholder user list', async () => {
+test('list users unauthorized', async () => {
+  const response = await request(app).get('/api/user');
+
+  expect(response.status).toBe(401);
+});
+
+test('an admin can list users', async () => {
   const response = await request(app)
-    .get('/api/user')
-    .set('Authorization', `Bearer ${testUserAuthToken}`);
+    .get('/api/user?page=1&limit=10&name=*')
+    .set('Authorization', `Bearer ${adminAuthToken}`);
 
   expect(response.status).toBe(200);
-  expect(response.body).toEqual({
-    message: 'not implemented',
-    users: [],
-    more: false,
-  });
+  expect(Array.isArray(response.body.users)).toBe(true);
+  expect(response.body.users.length).toBeGreaterThan(0);
+  expect(typeof response.body.more).toBe('boolean');
+
+  for (const user of response.body.users) {
+    expect(user).toEqual(
+      expect.objectContaining({
+        id: expect.any(Number),
+        name: expect.any(String),
+        email: expect.any(String),
+        roles: expect.any(Array),
+      })
+    );
+
+    expect(user).not.toHaveProperty('password');
+  }
 });
 
 test('DELETE /api/user/:userId returns not implemented', async () => {
