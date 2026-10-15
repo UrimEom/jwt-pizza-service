@@ -55,6 +55,37 @@ class DB {
     }
   }
 
+  async getUsers() {
+    const connection = await this.getConnection();
+ 
+    try {
+      const users = await this.query(
+        connection,
+        'SELECT id, name, email FROM user ORDER BY id'
+      );
+ 
+      for (const user of users) {
+        const roles = await this.query(
+          connection,
+          'SELECT role, objectId FROM userRole WHERE userId=?',
+          [user.id]
+        );
+ 
+        user.roles = roles.map((role) => ({
+          role: role.role,
+          objectId: role.objectId || undefined,
+        }));
+      }
+ 
+      return {
+        users,
+        more: false,
+      };
+    } finally {
+     connection.end();
+    }
+  }
+  
   async getUser(email, password) {
     const connection = await this.getConnection();
     try {

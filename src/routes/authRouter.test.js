@@ -215,6 +215,14 @@ test('an admin can list users', async () => {
   }
 });
 
+test('a diner cannot list users', async () => {
+   const response = await request(app)
+     .get('/api/user')
+     .set('Authorization', `Bearer ${testUserAuthToken}`);
+ 
+   expect(response.status).toBe(403);
+ });
+ 
 test('DELETE /api/user/:userId returns not implemented', async () => {
   const response = await request(app)
     .delete(`/api/user/${testUserId}`)
