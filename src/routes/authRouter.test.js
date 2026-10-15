@@ -47,9 +47,7 @@ beforeAll(async () => {
   expectValidJwt(adminAuthToken);
 });
 
-/* ------------------------------------------------------------------
-   service.js
------------------------------------------------------------------- */
+//service.js
 
 test('GET / returns the welcome message', async () => {
   const response = await request(app).get('/');
@@ -74,9 +72,7 @@ test('an unknown endpoint returns 404', async () => {
   expect(response.body.message).toBe('unknown endpoint');
 });
 
-/* ------------------------------------------------------------------
-   authRouter.js
------------------------------------------------------------------- */
+//authRouter.js
 
 test('registration requires a name, email, and password', async () => {
   const response = await request(app)
@@ -136,9 +132,7 @@ test('logout requires authentication', async () => {
   expect(response.status).toBe(401);
 });
 
-/* ------------------------------------------------------------------
-   userRouter.js
------------------------------------------------------------------- */
+//userRouter.js
 
 test('GET /api/user/me requires authentication', async () => {
   const response = await request(app).get('/api/user/me');
@@ -213,9 +207,90 @@ test('DELETE /api/user/:userId returns not implemented', async () => {
   expect(response.body.message).toBe('not implemented');
 });
 
-/* ------------------------------------------------------------------
-   orderRouter.js
------------------------------------------------------------------- */
+test('updated credentials persist and allow login', async () => {
+  const originalUser = {
+    name: 'Update Test Diner',
+    email: `${randomName()}@test.com`,
+    password: 'original-password',
+  };
+
+  // Register a separate account.
+  const registration = await request(app)
+    .post('/api/auth')
+    .send(originalUser);
+
+  expect(registration.status).toBe(200);
+
+  const userId = registration.body.user.id;
+  const originalToken = registration.body.token;
+
+  const changes = {
+    name: 'Updated Test Diner',
+    email: `${randomName()}@updated.com`,
+    password: 'updated-password',
+  };
+
+  // Save changes through the real backend.
+  const update = await request(app)
+    .put(`/api/user/${userId}`)
+    .set('Authorization', `Bearer ${originalToken}`)
+    .send(changes);
+
+  expect(update.status).toBe(200);
+  expect(update.body.user).toMatchObject({
+    id: userId,
+    name: changes.name,
+    email: changes.email,
+  });
+  expect(update.body.user).not.toHaveProperty('password');
+  expectValidJwt(update.body.token);
+
+  // Log out using the replacement token.
+  const logout = await request(app)
+    .delete('/api/auth')
+    .set('Authorization', `Bearer ${update.body.token}`);
+
+  expect(logout.status).toBe(200);
+
+  // The updated email and password should work.
+  const login = await request(app)
+    .put('/api/auth')
+    .send({
+      email: changes.email,
+      password: changes.password,
+    });
+
+  expect(login.status).toBe(200);
+  expect(login.body.user).toMatchObject({
+    id: userId,
+    name: changes.name,
+    email: changes.email,
+  });
+  expectValidJwt(login.body.token);
+
+  // The old password should no longer work.
+  const oldPasswordLogin = await request(app)
+    .put('/api/auth')
+    .send({
+      email: changes.email,
+      password: originalUser.password,
+    });
+
+  expect(oldPasswordLogin.status).toBe(404);
+
+  // The old email should no longer work.
+  const oldEmailLogin = await request(app)
+    .put('/api/auth')
+    .send({
+      email: originalUser.email,
+      password: originalUser.password,
+    });
+
+  expect(oldEmailLogin.status).toBe(404);
+});
+
+
+//orderRouter.js
 
 test('GET /api/order/menu returns an array', async () => {
   const response = await request(app).get('/api/order/menu');
@@ -278,9 +353,7 @@ test('an authenticated diner can get their orders', async () => {
   expect(Array.isArray(response.body.orders)).toBe(true);
 });
 
-/* ------------------------------------------------------------------
-   franchiseRouter.js
------------------------------------------------------------------- */
+//franchiseRouter.js
 
 test('GET /api/franchise returns the public franchise list', async () => {
   const response = await request(app).get('/api/franchise');
@@ -398,9 +471,7 @@ test('a diner cannot create a store', async () => {
   expect(response.body.message).toBe('unable to create a store');
 });
 
-/* ------------------------------------------------------------------
-   Order creation
------------------------------------------------------------------- */
+//Order creation
 
 test('a diner can create an order', async () => {
   const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
@@ -491,9 +562,7 @@ test('an order with an unknown menu ID fails', async () => {
   expect(response.status).toBe(500);
 });
 
-/* ------------------------------------------------------------------
-   Cleanup and small database helpers
------------------------------------------------------------------- */
+//cleanup and data helpers
 
 test('database helper methods return the expected values', () => {
   expect(DB.getOffset(3, 10)).toBe(20);
@@ -539,9 +608,7 @@ test('an authenticated user can log out', async () => {
   expect(afterLogout.status).toBe(401);
 });
 
-/* ------------------------------------------------------------------
-   Helpers from the course instructions
------------------------------------------------------------------- */
+//Helpers from the course instructions
 
 function expectValidJwt(potentialJwt) {
   expect(potentialJwt).toMatch(
