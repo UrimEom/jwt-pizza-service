@@ -162,6 +162,53 @@ class DB {
     }
   }
 
+  async deleteUser(userId) {
+   const connection = await this.getConnection();
+ 
+   try {
+     await connection.beginTransaction();
+ 
+     try {
+       const users = await this.query(
+         connection,
+         'SELECT id FROM user WHERE id=? FOR UPDATE',
+         [userId]
+       );
+ 
+       if (users.length === 0) {
+         throw new StatusCodeError('unknown user', 404);
+       }
+ 
+       // Revoke all existing sessions.
+       await this.query(
+         connection,
+         'DELETE FROM auth WHERE userId=?',
+         [userId]
+       );
+ 
+       // Remove roles before deleting the user because of the foreign key.
+       await this.query(
+         connection,
+         'DELETE FROM userRole WHERE userId=?',
+         [userId]
+       );
+ 
+       await this.query(
+         connection,
+         'DELETE FROM user WHERE id=?',
+         [userId]
+       );
+ 
+       await connection.commit();
+     } catch (error) {
+       await connection.rollback();
+       throw error;
+     }
+    } finally {
+      connection.end();
+    }
+  }
+
   async updateUser(userId, name, email, password) {
     const connection = await this.getConnection();
 

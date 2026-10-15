@@ -333,15 +333,82 @@ test('a diner cannot list users', async () => {
    });
  });
 
-test('DELETE /api/user/:userId returns not implemented', async () => {
-  const response = await request(app)
-    .delete(`/api/user/${testUserId}`)
-    .set('Authorization', `Bearer ${testUserAuthToken}`);
-
-  expect(response.status).toBe(200);
-  expect(response.body.message).toBe('not implemented');
-});
-
+ test('deleting a user requires authentication', async () => {
+   const response = await request(app)
+     .delete(`/api/user/${testUserId}`);
+ 
+   expect(response.status).toBe(401);
+ });
+ 
+ test('a diner cannot delete a user', async () => {
+   const response = await request(app)
+     .delete(`/api/user/${testUserId}`)
+     .set('Authorization', `Bearer ${testUserAuthToken}`);
+ 
+   expect(response.status).toBe(403);
+ });
+ 
+ test('an admin can delete a user and revoke their access', async () => {
+   const disposableUser = {
+     name: `Delete${randomName()}`,
+     email: `${randomName()}@test.com`,
+     password: 'delete-test-password',
+   };
+ 
+   const registration = await request(app)
+     .post('/api/auth')
+     .send(disposableUser);
+ 
+   expect(registration.status).toBe(200);
+ 
+   const userId = registration.body.user.id;
+   const userToken = registration.body.token;
+ 
+   const deletion = await request(app)
+     .delete(`/api/user/${userId}`)
+     .set('Authorization', `Bearer ${adminAuthToken}`);
+ 
+   expect(deletion.status).toBe(200);
+   expect(deletion.body.message).toBe('user deleted');
+ 
+   // The deleted account should no longer appear in the list.
+   const list = await request(app)
+     .get('/api/user')
+     .query({
+       page: 1,
+       limit: 10,
+       name: disposableUser.name,
+     })
+     .set('Authorization', `Bearer ${adminAuthToken}`);
+ 
+   expect(list.status).toBe(200);
+   expect(list.body.users).toEqual([]);
+ 
+   // Its existing token should no longer provide access.
+   const profile = await request(app)
+     .get('/api/user/me')
+     .set('Authorization', `Bearer ${userToken}`);
+ 
+   expect(profile.status).toBe(401);
+ 
+   // The account should no longer be able to log in.
+   const login = await request(app)
+     .put('/api/auth')
+     .send({
+       email: disposableUser.email,
+       password: disposableUser.password,
+     });
+ 
+   expect(login.status).toBe(404);
+ 
+   // Deleting the same account again should report that it is missing.
+   const secondDeletion = await request(app)
+     .delete(`/api/user/${userId}`)
+     .set('Authorization', `Bearer ${adminAuthToken}`);
+ 
+   expect(secondDeletion.status).toBe(404);
+ });
+ 
 test('updated credentials persist and allow login', async () => {
   const originalUser = {
     name: 'Update Test Diner',
