@@ -222,7 +222,117 @@ test('a diner cannot list users', async () => {
  
    expect(response.status).toBe(403);
  });
+
+ test('an admin can filter users by name', async () => {
+   const uniqueName = `Filter${randomName()}`;
  
+   const registration = await request(app)
+     .post('/api/auth')
+     .send({
+       name: uniqueName,
+       email: `${randomName()}@test.com`,
+       password: 'test-password',
+     });
+ 
+   expect(registration.status).toBe(200);
+ 
+   const response = await request(app)
+     .get('/api/user')
+     .query({
+       page: 1,
+       limit: 10,
+       name: `*${uniqueName}*`,
+     })
+     .set('Authorization', `Bearer ${adminAuthToken}`);
+ 
+   expect(response.status).toBe(200);
+   expect(response.body.users).toHaveLength(1);
+   expect(response.body.users[0]).toMatchObject({
+     id: registration.body.user.id,
+     name: uniqueName,
+   });
+   expect(response.body.more).toBe(false);
+ });
+ 
+ test('a name filter with no matches returns an empty list', async () => {
+   const response = await request(app)
+     .get('/api/user')
+     .query({
+       page: 1,
+       limit: 10,
+       name: `Missing${randomName()}`,
+     })
+     .set('Authorization', `Bearer ${adminAuthToken}`);
+ 
+   expect(response.status).toBe(200);
+   expect(response.body).toEqual({
+     users: [],
+     more: false,
+   });
+ });
+ 
+ test('an admin can paginate a filtered user list', async () => {
+   const prefix = `Page${randomName()}`;
+   const createdIds = [];
+ 
+   // Create three matching users in a known order.
+   for (let index = 1; index <= 3; index++) {
+     const registration = await request(app)
+       .post('/api/auth')
+       .send({
+         name: `${prefix} ${index}`,
+         email: `${randomName()}@test.com`,
+         password: 'test-password',
+       });
+ 
+     expect(registration.status).toBe(200);
+     createdIds.push(registration.body.user.id);
+   }
+ 
+   const firstPage = await request(app)
+     .get('/api/user')
+     .query({
+       page: 1,
+       limit: 2,
+       name: `*${prefix}*`,
+     })
+     .set('Authorization', `Bearer ${adminAuthToken}`);
+ 
+   expect(firstPage.status).toBe(200);
+   expect(firstPage.body.users.map((user) => user.id))
+     .toEqual(createdIds.slice(0, 2));
+   expect(firstPage.body.more).toBe(true);
+ 
+   const secondPage = await request(app)
+     .get('/api/user')
+     .query({
+       page: 2,
+       limit: 2,
+       name: `*${prefix}*`,
+     })
+     .set('Authorization', `Bearer ${adminAuthToken}`);
+ 
+   expect(secondPage.status).toBe(200);
+   expect(secondPage.body.users.map((user) => user.id))
+     .toEqual(createdIds.slice(2));
+   expect(secondPage.body.more).toBe(false);
+ 
+   const thirdPage = await request(app)
+     .get('/api/user')
+     .query({
+       page: 3,
+       limit: 2,
+       name: `*${prefix}*`,
+     })
+     .set('Authorization', `Bearer ${adminAuthToken}`);
+ 
+   expect(thirdPage.status).toBe(200);
+   expect(thirdPage.body).toEqual({
+     users: [],
+     more: false,
+   });
+ });
+
 test('DELETE /api/user/:userId returns not implemented', async () => {
   const response = await request(app)
     .delete(`/api/user/${testUserId}`)
