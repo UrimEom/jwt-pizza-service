@@ -289,6 +289,56 @@ test('updated credentials persist and allow login', async () => {
   expect(oldEmailLogin.status).toBe(404);
 });
 
+test('updating a profile without a password keeps the existing password', async () => {
+  const originalUser = {
+    name: 'Keep Password Diner',
+    email: `${randomName()}@test.com`,
+    password: 'original-password',
+  };
+
+  const registration = await request(app)
+    .post('/api/auth')
+    .send(originalUser);
+
+  expect(registration.status).toBe(200);
+
+  const userId = registration.body.user.id;
+
+  // The frontend omits password when the field is blank.
+  const update = await request(app)
+    .put(`/api/user/${userId}`)
+    .set('Authorization', `Bearer ${registration.body.token}`)
+    .send({
+      name: 'Updated Name',
+      email: originalUser.email,
+    });
+
+  expect(update.status).toBe(200);
+  expect(update.body.user.name).toBe('Updated Name');
+  expect(update.body.user).not.toHaveProperty('password');
+  expectValidJwt(update.body.token);
+
+  const logout = await request(app)
+    .delete('/api/auth')
+    .set('Authorization', `Bearer ${update.body.token}`);
+
+  expect(logout.status).toBe(200);
+
+  // The original password should still work.
+  const login = await request(app)
+    .put('/api/auth')
+    .send({
+      email: originalUser.email,
+      password: originalUser.password,
+    });
+
+  expect(login.status).toBe(200);
+  expect(login.body.user).toMatchObject({
+    id: userId,
+    name: 'Updated Name',
+    email: originalUser.email,
+  });
+});
 
 //orderRouter.js
 
