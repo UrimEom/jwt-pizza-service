@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 const config = require('../config.js');
 const { asyncHandler } = require('../endpointHelper.js');
 const { DB, Role } = require('../database/database.js');
-
 const authRouter = express.Router();
+const metrics = require('../metrics.js');
 
 authRouter.docs = [
   {
@@ -91,16 +91,18 @@ authRouter.delete(
 );
 
 async function setAuth(user) {
-  const token = jwt.sign(user, config.jwtSecret);
-  await DB.loginUser(user.id, token);
-  return token;
+   const token = jwt.sign(user, config.jwtSecret);
+   await DB.loginUser(user.id, token);
+   metrics.userLoggedIn(user.id, token);
+   return token;
 }
 
 async function clearAuth(req) {
-  const token = readAuthToken(req);
-  if (token) {
-    await DB.logoutUser(token);
-  }
+   const token = readAuthToken(req);
+   if (token) {
+     await DB.logoutUser(token);
+     metrics.userLoggedOut(token);
+   }
 }
 
 function readAuthToken(req) {
