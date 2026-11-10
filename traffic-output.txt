@@ -1,0 +1,31 @@
+Logging in with invalid credentials... 404
+Requesting menu... 200
+Login franchisee... true
+Login diner... true
+Login hungry diner... true
+Bought a pizza... 200
+Requesting menu... 200
+Requesting menu... 200
+Requesting menu... 200
+Requesting menu... 200
+Requesting menu... 200
+Requesting menu... 200
+Logging out diner...
+Requesting menu... 200
+Logging in with invalid credentials... 404
+Requesting menu... 200
+Requesting menu... 200
+Requesting menu... 200
+Bought too many pizzas... 500
+Requesting menu... 200
+Logging out hungry diner...
+Requesting menu... 200
+Requesting menu... 200
+Requesting menu... 200
+Requesting menu... 200
+Logging in with invalid credentials... 404
+Login diner... true
+Bought a pizza... 200
+Requesting menu... 200
+Requesting menu... 200
+Requesting menu... 200
