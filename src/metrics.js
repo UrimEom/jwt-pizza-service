@@ -173,8 +173,9 @@ async function sendMetrics() {
     });
 
     if (!response.ok) {
-      // Do not print configuration or credentials.
       console.error(`Metrics upload failed: HTTP ${response.status}`);
+    } else {
+      console.log(`Metrics uploaded: source=${config.metrics.source}`);
     }
   } catch (error) {
     console.error('Metrics upload failed:', error.message);

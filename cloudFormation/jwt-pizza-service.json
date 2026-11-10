@@ -6,7 +6,7 @@
      "ServiceName": {
        "Type": "String",
        "Description": "Unique name for the JWT Pizza Service",
-       "Default": "jwt-pizza-service-next"
+       "Default": "jwt-pizza-service"
      },
      "CertificateArn": {
        "Type": "String",
