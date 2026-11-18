@@ -5,6 +5,7 @@ const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');
 const metrics = require('../metrics.js');
 const orderRouter = express.Router();
+const logger = require('../logger.js');
 
 orderRouter.docs = [
   {
@@ -79,34 +80,64 @@ orderRouter.post(
   asyncHandler(async (req, res) => {
     const orderReq = req.body;
     const order = await DB.addDinerOrder(req.user, orderReq);
+    const factoryRequest = {
+      diner: {
+        id: req.user.id,
+        name: req.user.name,
+        email: req.user.email,
+      },
+      order,
+    };
 
     const started = process.hrtime.bigint();
     let response;
     let result;
 
     try {
+      void logger.log('info', 'factory', {
+         event: 'request',
+         method: 'POST',
+         path: '/api/order',
+         reqBody: {
+           ...factoryRequest,
+           diner: {
+             id: factoryRequest.diner.id,
+             name: '[REDACTED]',
+             email: '[REDACTED]',
+           },
+         },
+      });
       response = await fetch(`${config.factory.url}/api/order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           authorization: `Bearer ${config.factory.apiKey}`,
         },
-        body: JSON.stringify({
-          diner: {
-            id: req.user.id,
-            name: req.user.name,
-            email: req.user.email,
-          },
-          order,
-        }),
+        body: JSON.stringify(factoryRequest),
       });
 
       result = await response.json();
+      void logger.log(response.ok ? 'info' : 'error', 'factory', {
+         event: 'response',
+         method: 'POST',
+         path: '/api/order',
+         statusCode: response.status,
+         success: response.ok,
+         resBody: result,
+      });
     } catch (error) {
       const seconds =
         Number(process.hrtime.bigint() - started) / 1e9;
 
       metrics.pizzaPurchase(false, seconds);
+      void logger.log('error', 'factory', {
+         event: 'failure',
+         method: 'POST',
+         path: '/api/order',
+         statusCode: response?.status ?? null,
+         success: false,
+         message: 'Factory request or response processing failed',
+      });
       throw error;
     }
 
