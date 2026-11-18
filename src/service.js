@@ -6,8 +6,13 @@ const userRouter = require('./routes/userRouter.js');
 const version = require('./version.json');
 const config = require('./config.js');
 const metrics = require('./metrics.js');
+const logger = require('./logger.js');
+const requestContext = require('./requestContext.js');
 
 const app = express();
+
+app.use(requestContext.middleware);
+app.use(logger.httpLogger);
 app.use(metrics.requestTracker);
 app.use(express.json());
 app.use(setAuthUser);
