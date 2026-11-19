@@ -57,13 +57,14 @@ app.use((err, req, res, next) => {
   const statusCode = err.statusCode ?? 500;
 
   void logger.log(statusCode >= 500 ? 'error' : 'warn', 'exception', {
-    method: req.method,
-    path: req.originalUrl.split('?')[0],
-    statusCode,
-    message:
-      statusCode >= 500
-        ? 'Unexpected request processing error'
-        : 'Request rejected',
+   method: req.method,
+   path: req.originalUrl.split('?')[0],
+   statusCode,
+   message:
+     statusCode >= 500
+       ? 'Unexpected request processing error'
+       : 'Request rejected',
+   errorName: err.name ?? 'Error',
   });
 
   if (res.headersSent) {
