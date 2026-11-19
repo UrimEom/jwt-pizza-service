@@ -54,8 +54,26 @@ app.use('*', (req, res) => {
 
 // Default error handler for all exceptions and errors.
 app.use((err, req, res, next) => {
-  res.status(err.statusCode ?? 500).json({ message: err.message, stack: err.stack });
-  next();
+  const statusCode = err.statusCode ?? 500;
+
+  void logger.log(statusCode >= 500 ? 'error' : 'warn', 'exception', {
+    method: req.method,
+    path: req.originalUrl.split('?')[0],
+    statusCode,
+    message:
+      statusCode >= 500
+        ? 'Unexpected request processing error'
+        : 'Request rejected',
+  });
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  res.status(statusCode).json({
+    message: err.message,
+    stack: err.stack,
+  });
 });
 
 module.exports = app;
